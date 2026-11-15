@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPACE FORCE 1.0 - Mission Flight Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            synthDark: '#0b0c10',
+            synthPanel: '#1f2833',
+            synthCyan: '#66fcf1',
+            synthTeal: '#45a29e',
+            synthPink: '#ff007f',
+            synthPurple: '#9d00ff',
+            synthGold: '#ffb703',
+            synthRed: '#ff2a6d'
+          },
+          fontFamily: {
+            orbitron: ['Orbitron', 'sans-serif'],
+            rajdhani: ['Rajdhani', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { background-color: #08090d; color: #c5c6c7; font-family: 'Rajdhani', sans-serif; user-select: none; }
+    .font-orbitron { font-family: 'Orbitron', sans-serif; }
+    .glow-cyan { box-shadow: 0 0 15px rgba(102, 252, 241, 0.4); border-color: #66fcf1; }
+    .glow-pink { box-shadow: 0 0 15px rgba(255, 0, 127, 0.4); border-color: #ff007f; }
+    .glow-purple { box-shadow: 0 0 15px rgba(157, 0, 255, 0.4); }
+    canvas { touch-action: none; }
+    .scanline {
+      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0.3));
+      background-size: 100% 4px;
+    }
+    .synth-grid {
+      background-image: linear-gradient(to right, rgba(102, 252, 241, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(102, 252, 241, 0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between synth-grid relative overflow-x-hidden">
+
+  <!-- Notebook Modal Overlay -->
+  <div id="notebook-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-synthPanel border-2 border-synthCyan rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between border-b border-synthTeal/30 pb-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-synthCyan/20 border border-synthCyan flex items-center justify-center text-synthCyan">
+            <i class="fa-solid fa-book"></i>
+          </div>
+          <h3 class="font-orbitron font-black text-white text-lg tracking-wider">COMMANDER'S LOGBOOK</h3>
+        </div>
+        <button onclick="toggleNotebook()" class="text-gray-400 hover:text-white font-orbitron font-bold text-sm cursor-pointer">✕ CLOSE</button>
+      </div>
+      <div id="notebook-entries" class="flex-grow overflow-y-auto space-y-3 pr-2 font-mono text-xs text-gray-300"></div>
+      <div class="border-t border-synthTeal/30 pt-3 mt-4 flex justify-between items-center text-xs">
+        <span class="text-synthTeal font-bold">SPACE FORCE 1.0 ARCHIVES</span>
+        <button onclick="clearNotebookLogs()" class="text-synthRed hover:underline font-orbitron font-bold cursor-pointer">CLEAR LOGS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="w-full bg-synthDark/90 border-b border-synthPink/30 p-4 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-synthPink/20 border border-synthPink flex items-center justify-center text-synthPink text-xl glow-pink">
+          <i class="fa-solid fa-flask"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-black font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-synthPink via-synthCyan to-synthPurple tracking-wider">SPACE FORCE 1.0</h1>
+          <p class="text-xs text-synthCyan font-semibold uppercase tracking-widest">Mission Flight Simulator</p>
+        </div>
+      </div>
+
+      <!-- Header Right Controls -->
+      <div class="flex items-center gap-3">
+        <button onclick="goRedesign()" class="px-4 py-2 bg-synthPanel border border-synthPink/40 text-synthPink rounded-xl text-xs font-orbitron font-bold hover:bg-synthPink hover:text-synthDark transition-all flex items-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-pen-ruler"></i> REDESIGN ROCKET
+        </button>
+        <button onclick="toggleNotebook()" class="px-4 py-2 bg-synthPanel border-2 border-synthCyan text-synthCyan rounded-xl text-xs font-orbitron font-bold hover:bg-synthCyan hover:text-synthDark transition-all flex items-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-book-journal-whills"></i> LOGBOOK
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow flex flex-col lg:flex-row gap-6">
+
+    <!-- ============ LEFT: MISSION PLANNER ============ -->
+    <aside class="w-full lg:w-96 bg-synthPanel/90 border-2 border-synthPink/30 rounded-2xl p-4 md:p-5 flex flex-col gap-4 shadow-xl backdrop-blur-md">
+      <div class="border-b border-synthPink/20 pb-3 flex items-center justify-between">
+        <h2 class="font-orbitron text-sm font-bold text-synthPink flex items-center gap-2">
+          <i class="fa-solid fa-route text-synthCyan"></i> MISSION PLANNER
+        </h2>
+        <span id="sim-status-badge" class="text-[10px] font-orbitron font-bold bg-synthDark text-synthCyan border border-synthCyan/40 px-2.5 py-0.5 rounded-full">PAD READY</span>
+      </div>
+
+      <!-- Fixed Mars Mission Requirements (No custom dropdown) -->
+      <div class="bg-synthDark/80 p-3 rounded-xl border border-synthCyan/30 space-y-1.5">
+        <div class="text-[10px] font-orbitron font-bold text-gray-400 uppercase tracking-wider">Primary Objective</div>
+        <div id="mission-name" class="font-orbitron font-extrabold text-synthCyan text-lg">MARS TRANSFER ORBIT</div>
+        <div id="mission-blurb" class="text-[11px] text-gray-300">Escape Earth's gravity well and achieve interplanetary injection velocity toward Mars.</div>
+        
+        <div class="pt-2 border-t border-synthCyan/20 grid grid-cols-2 gap-2 text-[11px] font-mono">
+          <div class="bg-synthPanel/70 p-2 rounded-lg border border-synthPink/20">
+            <div class="text-[9px] text-gray-400 uppercase">Required Speed</div>
+            <div id="req-speed" class="text-synthPink font-orbitron font-bold text-xs">11,200 m/s</div>
+          </div>
+          <div class="bg-synthPanel/70 p-2 rounded-lg border border-synthCyan/20">
+            <div class="text-[9px] text-gray-400 uppercase">Target Altitude</div>
+            <div id="req-alt" class="text-synthCyan font-orbitron font-bold text-xs">400.0 km</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rocket & Integrated Vehicle Mass Summary -->
+      <div class="bg-synthDark/80 p-3 rounded-xl border border-synthPink/20 text-[11px] font-mono space-y-1">
+        <div class="text-[10px] font-orbitron font-bold text-gray-400 uppercase tracking-wider mb-1">Integrated Vehicle & Rocket</div>
+        <div class="flex justify-between gap-2"><span class="text-gray-400">Engine</span><span id="rk-engine" class="text-synthPink font-bold text-right">-</span></div>
+        <div class="flex justify-between gap-2"><span class="text-gray-400">Tanks</span><span id="rk-tanks" class="text-white font-bold text-right">-</span></div>
+        <div class="flex justify-between gap-2"><span class="text-gray-400">Hull</span><span id="rk-body" class="text-white font-bold text-right">-</span></div>
+        <div class="flex justify-between gap-2 border-t border-synthPink/20 pt-1 mt-1"><span class="text-gray-400">Payload (Assembled Vehicle)</span><span id="mission-payload" class="text-synthGold font-bold text-right">-</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Rocket Dry + Fuel Mass</span><span id="rocket-only-mass" class="text-white font-bold">-</span></div>
+        <div class="flex justify-between border-t border-synthCyan/20 pt-1"><span class="text-gray-300 font-bold">Total Liftoff Mass</span><span id="spec-mass" class="text-synthCyan font-bold">-</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Liftoff Thrust</span><span id="spec-thrust" class="text-synthPink font-bold">-</span></div>
+        <div class="flex justify-between"><span class="text-gray-400">Thrust-to-Weight (TWR)</span><span id="spec-twr" class="text-synthGold font-bold">-</span></div>
+      </div>
+
+      <!-- Delta-v budget -->
+      <div class="bg-synthDark/90 p-3 rounded-xl border border-synthGold/40 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-orbitron font-bold text-synthGold flex items-center gap-1.5"><i class="fa-solid fa-gauge"></i> DELTA-V BUDGET</span>
+          <span id="dv-verdict" class="text-[10px] font-orbitron font-bold text-synthCyan">-</span>
+        </div>
+        <div class="space-y-1">
+          <div class="flex justify-between text-[10px] font-mono text-gray-300"><span>Your rocket delivers</span><span id="dv-avail" class="text-synthCyan font-bold">-</span></div>
+          <div class="w-full bg-synthPanel h-2.5 rounded-full overflow-hidden border border-synthCyan/30"><div id="dv-bar-avail" class="bg-synthCyan h-full transition-all duration-300" style="width:0%"></div></div>
+          <div class="flex justify-between text-[10px] font-mono text-gray-300 pt-1"><span id="dv-need-label">Mission needs</span><span id="dv-need" class="text-synthPink font-bold">14,200 m/s</span></div>
+        </div>
+      </div>
+
+      <!-- Pitch-over & Max-Q Settings (Propellant Slider Removed) -->
+      <div class="flex flex-col gap-3 text-xs font-semibold">
+        <div>
+          <div class="flex justify-between mb-1"><span class="text-gray-300">GRAVITY TURN PITCH RATE</span><span id="val-turn" class="text-synthCyan font-orbitron font-bold">0.60°/s</span></div>
+          <input type="range" id="slider-turn" min="0.25" max="1.20" value="0.60" step="0.01" oninput="updatePlanner()" class="w-full accent-synthPink cursor-pointer">
+          <div class="text-[9px] text-gray-500 mt-0.5">Controls how fast the rocket pitches horizontal for orbital velocity.</div>
+        </div>
+        <label class="flex items-start gap-2 cursor-pointer bg-synthDark/60 p-2 rounded-lg border border-synthPink/20">
+          <input type="checkbox" id="chk-bucket" checked onchange="updatePlanner()" class="accent-synthPink w-4 h-4 mt-0.5">
+          <span class="text-gray-300 text-[11px]">MAX-Q THROTTLE CONTROL<br><span class="text-[9px] text-gray-500 font-normal">Automatically eases throttle to 75% during peak atmospheric pressure.</span></span>
+        </label>
+      </div>
+
+      <!-- Working AI Flight Computer -->
+      <div class="bg-synthDark/90 border border-synthCyan/40 rounded-xl p-3 space-y-2">
+        <div class="flex items-center justify-between border-b border-synthCyan/20 pb-1">
+          <span class="text-[11px] font-orbitron font-bold text-synthCyan flex items-center gap-1.5"><i class="fa-solid fa-robot"></i> AI FLIGHT COMPUTER</span>
+          <span class="text-[9px] text-synthPink font-bold uppercase">TWR Trajectory Solver</span>
+        </div>
+        <div class="text-[11px] text-gray-300">Calculates the exact pitch-over rate based on your rocket's Thrust-to-Weight Ratio and payload mass.</div>
+        <button onclick="autoTune()" class="w-full py-2 bg-synthCyan text-synthDark font-orbitron font-extrabold text-[10px] rounded-lg hover:scale-105 transition-all cursor-pointer shadow-md">
+          <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> COMPUTE OPTIMAL TRAJECTORY
+        </button>
+        <div id="autotune-result" class="hidden text-[10px] font-mono bg-synthPanel/90 border border-synthCyan/30 p-2 rounded-lg text-gray-200"></div>
+      </div>
+
+      <!-- Time warp -->
+      <div>
+        <label class="text-[11px] font-orbitron font-bold text-gray-300 uppercase tracking-wider block mb-1">Simulation Time Warp</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button id="warp-1x" onclick="setTimeWarp(1)" class="py-1.5 bg-synthPink text-synthDark rounded-lg font-orbitron font-extrabold text-xs cursor-pointer">1X</button>
+          <button id="warp-5x" onclick="setTimeWarp(5)" class="py-1.5 bg-synthDark border border-synthPink/40 text-gray-300 rounded-lg font-orbitron font-extrabold text-xs cursor-pointer">5X</button>
+          <button id="warp-20x" onclick="setTimeWarp(20)" class="py-1.5 bg-synthDark border border-synthPink/40 text-gray-300 rounded-lg font-orbitron font-extrabold text-xs cursor-pointer">20X</button>
+        </div>
+      </div>
+
+      <div class="mt-auto flex flex-col gap-2">
+        <button id="btn-launch" onclick="launchSimulation()" class="w-full py-3 bg-gradient-to-r from-synthPink via-synthPurple to-synthCyan text-white font-orbitron font-black text-xs rounded-xl hover:scale-105 transition-all shadow-lg glow-pink cursor-pointer tracking-wider flex items-center justify-center gap-2">
+          <i class="fa-solid fa-play"></i> INITIATE LAUNCH
+        </button>
+        <button id="btn-abort" onclick="abortSimulation()" class="w-full py-2.5 bg-synthDark border border-synthRed/50 text-synthRed font-orbitron font-bold text-xs rounded-xl hover:bg-synthRed hover:text-synthDark transition-all cursor-pointer flex items-center justify-center gap-2">
+          <i class="fa-solid fa-ban"></i> ABORT / RESET PAD
+        </button>
+      </div>
+    </aside>
+
+    <!-- ============ RIGHT: FLIGHT VIEW ============ -->
+    <div class="flex-1 flex flex-col gap-4">
+      <div class="relative w-full h-[440px] md:h-[520px] bg-synthDark rounded-2xl border-2 border-synthCyan/40 overflow-hidden shadow-2xl">
+        <div class="scanline absolute inset-0 pointer-events-none opacity-20 z-10"></div>
+        <canvas id="sim-canvas" class="w-full h-full block"></canvas>
+
+        <!-- Telemetry -->
+        <div class="absolute top-4 left-4 z-20 bg-synthDark/85 border border-synthCyan/30 p-3 rounded-xl backdrop-blur-md text-xs font-mono space-y-1">
+          <div class="text-[10px] text-gray-400 font-bold font-orbitron uppercase tracking-widest border-b border-synthCyan/20 pb-1 mb-1">Live Telemetry</div>
+          <div>ALTITUDE: <span id="tele-alt" class="text-synthCyan font-bold font-orbitron text-sm">0.0 km</span></div>
+          <div>SPEED: <span id="tele-vel" class="text-synthPink font-bold font-orbitron text-sm">0 m/s</span></div>
+          <div>G-LOAD: <span id="tele-acc" class="text-synthGold font-bold font-orbitron">1.0 G</span></div>
+          <div>PITCH: <span id="tele-pitch" class="text-white font-bold">90.0°</span></div>
+          <div>AIR PRESSURE (q): <span id="tele-q" class="text-white font-bold">0.0 kPa</span></div>
+        </div>
+
+        <!-- Phase + propellant -->
+        <div class="absolute top-4 right-4 z-20 w-48 bg-synthDark/85 border border-synthPink/30 p-3 rounded-xl backdrop-blur-md text-xs font-mono">
+          <div class="text-[10px] text-gray-400 font-bold font-orbitron uppercase tracking-widest border-b border-synthPink/20 pb-1 mb-1">Flight Phase</div>
+          <div id="tele-phase" class="text-synthPink font-bold font-orbitron text-sm">PRE-LAUNCH</div>
+          <div class="mt-2 space-y-1.5">
+            <div><div class="flex justify-between text-[10px] text-gray-400"><span>STAGE 1 FUEL</span><span id="tele-s1">100%</span></div>
+              <div class="w-full bg-synthPanel h-1.5 rounded-full overflow-hidden"><div id="bar-s1" class="bg-synthPink h-full" style="width:100%"></div></div></div>
+            <div><div class="flex justify-between text-[10px] text-gray-400"><span>STAGE 2 FUEL</span><span id="tele-s2">100%</span></div>
+              <div class="w-full bg-synthPanel h-1.5 rounded-full overflow-hidden"><div id="bar-s2" class="bg-synthCyan h-full" style="width:100%"></div></div></div>
+          </div>
+        </div>
+
+        <div id="event-log" class="absolute bottom-4 left-4 z-20 max-w-[55%] text-[10px] font-mono text-synthTeal space-y-0.5 pointer-events-none"></div>
+
+        <div id="separation-alert" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 hidden bg-synthPink/90 border border-white px-6 py-2.5 rounded-xl shadow-2xl animate-bounce text-center cursor-pointer" onclick="triggerStageSeparation()">
+          <span class="font-orbitron font-black text-xs text-white tracking-widest flex items-center gap-2">
+            <i class="fa-solid fa-scissors"></i> STAGE 1 DEPLETED - CLICK TO SEPARATE & IGNITE STAGE 2!
+          </span>
+        </div>
+
+        <div id="result-overlay" class="absolute inset-0 z-40 hidden bg-synthDark/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div class="max-w-md w-full bg-synthPanel border-2 rounded-2xl p-5 text-center space-y-3 shadow-2xl" id="result-card">
+            <div id="result-icon" class="text-4xl">🛰️</div>
+            <h3 id="result-title" class="text-xl font-black font-orbitron text-synthCyan">RESULT</h3>
+            <p id="result-detail" class="text-xs text-gray-300"></p>
+            <div id="result-stats" class="text-[11px] font-mono text-left bg-synthDark/80 border border-synthPink/20 rounded-xl p-3 space-y-1"></div>
+            <div id="result-actions" class="flex flex-col gap-2 pt-1"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+        <div class="bg-synthPanel/80 border border-synthPink/20 p-3 rounded-xl text-center">
+          <div class="text-[10px] text-gray-400 font-orbitron font-bold">MAX ALTITUDE</div>
+          <div id="stat-max-alt" class="font-orbitron font-extrabold text-base text-synthCyan mt-1">0.0 km</div>
+        </div>
+        <div class="bg-synthPanel/80 border border-synthPink/20 p-3 rounded-xl text-center">
+          <div class="text-[10px] text-gray-400 font-orbitron font-bold">MAX SPEED</div>
+          <div id="stat-max-vel" class="font-orbitron font-extrabold text-base text-synthPink mt-1">0 m/s</div>
+        </div>
+        <div class="bg-synthPanel/80 border border-synthPink/20 p-3 rounded-xl text-center">
+          <div class="text-[10px] text-gray-400 font-orbitron font-bold">MAX-Q (LIMIT <span id="q-limit">42</span>)</div>
+          <div id="stat-max-q" class="font-orbitron font-extrabold text-base text-synthGold mt-1">0.0 kPa</div>
+        </div>
+        <div class="bg-synthPanel/80 border border-synthPink/20 p-3 rounded-xl text-center">
+          <div class="text-[10px] text-gray-400 font-orbitron font-bold">MISSION OUTCOME</div>
+          <div id="stat-outcome" class="font-orbitron font-extrabold text-xs text-synthCyan mt-1">READY</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="w-full bg-synthDark/80 border-t border-synthPink/20 py-3 text-center text-[11px] text-gray-500 font-bold tracking-wider">
+    SPACE FORCE 1.0 &bull; MISSION FLIGHT SIMULATOR
+  </footer>
+
+  <script src="notebook.js"></script>
+  <script src="rocket_sim.js"></script>
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPACE FORCE 1.0 - Rocket Stage & Thruster Assembly Bay</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            synthDark: '#0b0c10',
+            synthPanel: '#1f2833',
+            synthCyan: '#66fcf1',
+            synthTeal: '#45a29e',
+            synthPink: '#ff007f',
+            synthPurple: '#9d00ff',
+            synthGold: '#ffb703',
+            synthRed: '#ff2a6d'
+          },
+          fontFamily: {
+            orbitron: ['Orbitron', 'sans-serif'],
+            rajdhani: ['Rajdhani', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { 
+      background: linear-gradient(rgba(8, 9, 13, 0.85), rgba(8, 9, 13, 0.92)), url('Assets/workspace.png') no-repeat center center fixed;
+      background-size: cover;
+      color: #c5c6c7; 
+      font-family: 'Rajdhani', sans-serif; 
+      user-select: none; 
+    }
+    .font-orbitron { font-family: 'Orbitron', sans-serif; }
+    .glow-cyan { box-shadow: 0 0 15px rgba(102, 252, 241, 0.4); border-color: #66fcf1; }
+    .glow-pink { box-shadow: 0 0 15px rgba(255, 0, 127, 0.4); border-color: #ff007f; }
+    .glow-purple { box-shadow: 0 0 15px rgba(157, 0, 255, 0.4); }
+    canvas { touch-action: none; }
+    .scanline {
+      background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0, 0, 0, 0.3) 50%, rgba(0, 0, 0, 0.3));
+      background-size: 100% 4px;
+    }
+    .dj-knob {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: radial-gradient(circle, #1f2833 0%, #0b0c10 80%);
+      border: 3px solid #ff007f;
+      box-shadow: 0 0 12px rgba(255, 0, 127, 0.3), inset 0 2px 5px rgba(0,0,0,0.8);
+      position: relative; cursor: grab; display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .dj-knob:active { cursor: grabbing; border-color: #ff007f; box-shadow: 0 0 20px rgba(255, 0, 127, 0.6); }
+    .dj-knob-indicator {
+      position: absolute; top: 6px; width: 4px; height: 22px; background: #ff007f;
+      border-radius: 2px; box-shadow: 0 0 8px #ff007f; transform-origin: bottom center;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative overflow-x-hidden">
+
+  <!-- Notebook Modal Overlay -->
+  <div id="notebook-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-synthPanel border-2 border-synthCyan rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between border-b border-synthTeal/30 pb-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-synthCyan/20 border border-synthCyan flex items-center justify-center text-synthCyan">
+            <i class="fa-solid fa-book"></i>
+          </div>
+          <h3 class="font-orbitron font-black text-white text-lg tracking-wider">COMMANDER'S LOGBOOK</h3>
+        </div>
+        <button onclick="toggleNotebook()" class="text-gray-400 hover:text-white font-orbitron font-bold text-sm cursor-pointer">✕ CLOSE</button>
+      </div>
+      <div id="notebook-entries" class="flex-grow overflow-y-auto space-y-3 pr-2 font-mono text-xs text-gray-300"></div>
+      <div class="border-t border-synthTeal/30 pt-3 mt-4 flex justify-between items-center text-xs">
+        <span class="text-synthTeal font-bold">SPACE FORCE 1.0 ARCHIVES</span>
+        <button onclick="clearNotebookLogs()" class="text-synthRed hover:underline font-orbitron font-bold cursor-pointer">CLEAR LOGS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header (Cleaned up: rocket selector tabs removed) -->
+  <header class="w-full bg-synthDark/90 border-b border-synthPink/30 p-4 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-synthPink/20 border border-synthPink flex items-center justify-center text-synthPink text-xl glow-pink">
+          <i class="fa-solid fa-rocket"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-black font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-synthPink via-synthPurple to-synthCyan tracking-wider">
+            SPACE FORCE 1.0
+          </h1>
+          <p class="text-xs text-synthPink font-semibold uppercase tracking-widest">Rocket Stage & Thruster Assembly Bay</p>
+        </div>
+      </div>
+
+      <!-- Financial Status & Logbook Button -->
+      <div class="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
+        <div class="flex items-center gap-4 bg-synthPanel/60 px-4 py-2 rounded-xl border border-synthPink/20">
+          <div class="text-right">
+            <div class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Rocket Budget</div>
+            <div id="budget-display" class="font-orbitron font-extrabold text-base text-synthPink">$1,000,000</div>
+          </div>
+          <div class="h-8 w-[1px] bg-synthPink/30"></div>
+          <div>
+            <div class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Clearance</div>
+            <div id="clearance-display" class="font-orbitron font-bold text-xs text-synthCyan">LVL 5 - RKT</div>
+          </div>
+        </div>
+
+        <button onclick="toggleNotebook()" class="bg-synthPanel border-2 border-synthCyan text-synthCyan px-3.5 py-2.5 rounded-xl font-orbitron font-bold text-xs hover:bg-synthCyan hover:text-synthDark transition-all flex items-center gap-2 cursor-pointer shrink-0">
+          <i class="fa-solid fa-book-journal-whills"></i> LOGBOOK
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Game Container -->
+  <main class="max-w-6xl w-full mx-auto p-4 md:p-6 flex-grow flex flex-col justify-center">
+    <div class="mb-6 bg-synthPanel/80 border border-synthPink/30 rounded-2xl p-4 shadow-xl backdrop-blur-md">
+      <div class="flex items-center justify-between mb-3">
+        <span id="assembly-title" class="font-orbitron font-bold text-synthPink tracking-wide text-sm md:text-base">
+          HEAVY LIFT ROCKET: STAGE & NOZZLE INTEGRATION
+        </span>
+        <span id="stage-counter" class="font-orbitron font-bold text-synthCyan text-sm">
+          STAGE 1 / 5
+        </span>
+      </div>
+
+      <div class="grid grid-cols-5 gap-2 relative">
+        <div class="absolute top-1/2 left-0 w-full h-1 bg-synthDark -translate-y-1/2 z-0"></div>
+        <div id="progress-bar-fill" class="absolute top-1/2 left-0 h-1 bg-synthPink transition-all duration-500 -translate-y-1/2 z-0" style="width: 20%;"></div>
+
+        <div id="node-1" class="relative z-10 flex flex-col items-center gap-1">
+          <div class="node-icon w-8 h-8 md:w-10 md:h-10 rounded-full bg-synthPink text-synthDark font-orbitron font-black text-xs md:text-sm flex items-center justify-center border-2 border-synthPink shadow-lg transition-all">1</div>
+          <span class="node-label text-[10px] md:text-xs font-bold text-synthPink text-center hidden sm:block">WIRING</span>
+        </div>
+        <div id="node-2" class="relative z-10 flex flex-col items-center gap-1">
+          <div class="node-icon w-8 h-8 md:w-10 md:h-10 rounded-full bg-synthDark text-gray-500 font-orbitron font-black text-xs md:text-sm flex items-center justify-center border-2 border-gray-700 transition-all">2</div>
+          <span class="node-label text-[10px] md:text-xs font-bold text-gray-500 text-center hidden sm:block">WELDING</span>
+        </div>
+        <div id="node-3" class="relative z-10 flex flex-col items-center gap-1">
+          <div class="node-icon w-8 h-8 md:w-10 md:h-10 rounded-full bg-synthDark text-gray-500 font-orbitron font-black text-xs md:text-sm flex items-center justify-center border-2 border-gray-700 transition-all">3</div>
+          <span class="node-label text-[10px] md:text-xs font-bold text-gray-500 text-center hidden sm:block">VALVES</span>
+        </div>
+        <div id="node-4" class="relative z-10 flex flex-col items-center gap-1">
+          <div class="node-icon w-8 h-8 md:w-10 md:h-10 rounded-full bg-synthDark text-gray-500 font-orbitron font-black text-xs md:text-sm flex items-center justify-center border-2 border-gray-700 transition-all">4</div>
+          <span class="node-label text-[10px] md:text-xs font-bold text-gray-500 text-center hidden sm:block">GIMBAL</span>
+        </div>
+        <div id="node-5" class="relative z-10 flex flex-col items-center gap-1">
+          <div class="node-icon w-8 h-8 md:w-10 md:h-10 rounded-full bg-synthDark text-gray-500 font-orbitron font-black text-xs md:text-sm flex items-center justify-center border-2 border-gray-700 transition-all">5</div>
+          <span class="node-label text-[10px] md:text-xs font-bold text-gray-500 text-center hidden sm:block">TORQUE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-synthPanel/90 border-2 border-synthPink/40 rounded-2xl p-4 md:p-6 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+      <div class="scanline absolute inset-0 pointer-events-none opacity-20"></div>
+
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 mb-4 border-b border-synthPink/20">
+        <div>
+          <h2 id="stage-title" class="text-lg md:text-xl font-orbitron font-bold text-synthPink flex items-center gap-2">
+            <i class="fa-solid fa-bolt text-synthCyan"></i> STAGE 1: IGNITION SYSTEM WIRE SPLICING
+          </h2>
+          <p id="stage-desc" class="text-xs md:text-sm text-gray-300 mt-1">
+            Connect matching colored ignition leads together before time expires.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <!-- Manual 'Done' Button -->
+          <button onclick="userClickedDone()" class="bg-synthPink hover:bg-opacity-80 text-synthDark font-orbitron font-bold text-xs px-5 py-3 rounded-xl transition-all shadow-lg glow-pink cursor-pointer">
+            <i class="fa-solid fa-check mr-1"></i> I'M DONE
+          </button>
+
+          <div class="bg-synthDark/90 border border-synthPink/50 px-4 py-2 rounded-xl flex items-center gap-3 shrink-0 glow-pink">
+            <i class="fa-solid fa-stopwatch text-synthPink text-lg animate-pulse"></i>
+            <div>
+              <div class="text-[9px] uppercase tracking-widest text-gray-400 font-bold">Time Limit</div>
+              <div id="timer-display" class="font-orbitron font-black text-2xl text-synthPink">00:15</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="canvas-container" class="relative w-full h-[360px] md:h-[420px] bg-synthDark rounded-xl border border-synthPink/30 overflow-hidden flex items-center justify-center">
+        <canvas id="game-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+        <div id="stage3-ui" class="absolute inset-0 flex flex-col items-center justify-center gap-6 p-4 hidden bg-synthDark/95 backdrop-blur-md">
+          <div class="text-center">
+            <div id="valve-target-label" class="font-orbitron text-sm font-bold text-synthPink">TARGET FUEL MIX: 100 PSI</div>
+            <p class="text-[11px] text-gray-400 mt-1">Adjust mixing dials so RP-1 Kerosene + LOX matches the required pressure.</p>
+          </div>
+          <div class="flex items-center justify-center gap-12 md:gap-20">
+            <div class="flex flex-col items-center gap-2">
+              <div class="text-xs font-orbitron font-bold text-synthPink tracking-wider">RP-1 VALVE</div>
+              <div id="knob1-val" class="text-xl font-orbitron font-extrabold text-synthCyan">50 PSI</div>
+              <div id="dj-knob-1" class="dj-knob" onmousedown="startKnobDrag(event, 1)" ontouchstart="startKnobDrag(event, 1)">
+                <div id="knob-indicator-1" class="dj-knob-indicator"></div>
+              </div>
+            </div>
+            <div class="flex flex-col items-center gap-2">
+              <div class="text-xs font-orbitron font-bold text-synthPink tracking-wider">LOX VALVE</div>
+              <div id="knob2-val" class="text-xl font-orbitron font-extrabold text-synthCyan">50 PSI</div>
+              <div id="dj-knob-2" class="dj-knob" onmousedown="startKnobDrag(event, 2)" ontouchstart="startKnobDrag(event, 2)">
+                <div id="knob-indicator-2" class="dj-knob-indicator"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="start-overlay" class="absolute inset-0 bg-synthDark/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
+          <i class="fa-solid fa-rocket text-5xl text-synthPink mb-4 animate-bounce"></i>
+          <h3 id="overlay-title" class="text-2xl font-orbitron font-black text-white mb-2">READY TO ASSEMBLE ROCKET</h3>
+          <p id="overlay-sub" class="text-sm text-gray-300 max-w-md mb-6">
+            Strict 15-second window per component. Inaccurate wiring, bad welds, misaligned valves, or timeout will trigger screening penalties deducted from your rocket budget!
+          </p>
+          <button id="start-btn" onclick="startCurrentStage()" class="px-8 py-3 bg-gradient-to-r from-synthPink to-synthPurple text-white font-orbitron font-black rounded-xl hover:scale-105 transition-all shadow-lg glow-pink text-sm tracking-wider cursor-pointer">
+            INITIATE ROCKET ASSEMBLY
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-4 flex items-center justify-between text-xs text-gray-400">
+        <span id="hint-text" class="flex items-center gap-2 font-semibold text-synthPink">
+          <i class="fa-solid fa-circle-info"></i> Tip: Click "I'M DONE" before the 15s timer runs out to lock in your configuration.
+        </span>
+        <button onclick="resetWholeSuite()" class="hover:text-synthCyan transition-all flex items-center gap-1 font-orbitron font-bold cursor-pointer">
+          <i class="fa-solid fa-rotate-left"></i> RESTART ROCKET BAY
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- QA Screening Modal -->
+  <div id="screening-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-synthPanel border-2 border-synthPink rounded-2xl max-w-xl w-full p-6 shadow-2xl relative glow-pink flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-synthPink/30 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-synthPink/20 border border-synthPink flex items-center justify-center text-synthPink">
+            <i class="fa-solid fa-stethoscope"></i>
+          </div>
+          <h3 class="font-orbitron font-black text-white text-base tracking-wider">ROCKET QA & SCREENING RESULTS</h3>
+        </div>
+        <span id="screening-badge" class="px-3 py-1 rounded-full text-[10px] font-orbitron font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-400">PASSED</span>
+      </div>
+
+      <div id="screening-logs" class="bg-synthDark/90 border border-synthPink/30 rounded-xl p-4 text-xs font-mono space-y-2 max-h-56 overflow-y-auto text-gray-300"></div>
+
+      <div class="bg-synthDark p-4 rounded-xl border border-synthPink/20 flex justify-between items-center text-xs">
+        <span class="text-gray-400">QA Penalty Applied:</span>
+        <span id="screening-penalty-amount" class="text-synthRed font-orbitron font-bold text-sm">$0</span>
+      </div>
+
+      <button onclick="proceedAfterScreening()" class="w-full py-3 bg-gradient-to-r from-synthPink to-synthPurple text-white font-orbitron font-black rounded-xl hover:scale-105 transition-all shadow-lg glow-pink text-xs cursor-pointer">
+        PROCEED TO ROCKET DESIGN &gt;&gt;
+      </button>
+    </div>
+  </div>
+
+  <!-- Corporate Expense Recovery Modal -->
+  <div id="recovery-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-synthPanel border-2 border-synthPurple rounded-2xl max-w-md w-full p-6 text-center shadow-2xl relative glow-purple">
+      <h3 class="text-xl font-orbitron font-black text-synthPink mb-1">NASA RECOVERY TRIVIA</h3>
+      <p class="text-xs text-gray-300 mb-4">Answer correctly to recover $25,000 before proceeding to rocket design!</p>
+
+      <div class="bg-synthDark p-4 rounded-xl border border-synthPink/30 flex flex-col gap-3 text-left mb-4">
+        <p id="trivia-question" class="text-xs text-white font-bold"></p>
+        <div id="trivia-options" class="flex flex-col gap-2"></div>
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="closeRecoveryModal()" class="text-gray-400 hover:text-white text-xs font-orbitron font-bold cursor-pointer">ABORT & PROCEED</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="w-full bg-synthDark/80 border-t border-synthPink/20 py-3 text-center text-[11px] text-gray-500 font-bold tracking-wider">
+    SPACE FORCE 1.0 &bull; ROCKET HARDWARE ASSEMBLY & LAUNCH SUITE
+  </footer>
+
+  <script src="notebook.js"></script>
+  <script src="rocket_as.js"></script>
+</body>
+</html>

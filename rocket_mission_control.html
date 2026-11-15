@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPACE FORCE 1.0 - Mission Control & Launch Simulation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            synthDark: '#08090d',
+            synthPanel: '#131722',
+            synthCard: '#1c2333',
+            synthCyan: '#66fcf1',
+            synthTeal: '#45a29e',
+            synthPink: '#ff007f',
+            synthPurple: '#9d00ff',
+            synthGold: '#ffb703',
+            synthRed: '#ff2a6d'
+          },
+          fontFamily: {
+            orbitron: ['Orbitron', 'sans-serif'],
+            rajdhani: ['Rajdhani', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #08090d; color: #c5c6c7; font-family: 'Rajdhani', sans-serif; }
+    .synth-grid {
+      background-image: linear-gradient(to right, rgba(102, 252, 241, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(102, 252, 241, 0.04) 1px, transparent 1px);
+      background-size: 30px 30px;
+    }
+    .glow-pink { box-shadow: 0 0 25px rgba(255, 0, 127, 0.4); }
+    .glow-cyan { box-shadow: 0 0 25px rgba(102, 252, 241, 0.4); }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between synth-grid">
+
+  <!-- Notebook Modal Overlay -->
+  <div id="notebook-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-synthPanel border-2 border-synthCyan rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between border-b border-synthTeal/30 pb-3 mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-synthCyan/20 border border-synthCyan flex items-center justify-center text-synthCyan">
+            <i class="fa-solid fa-book"></i>
+          </div>
+          <h3 class="font-orbitron font-black text-white text-lg tracking-wider">COMMANDER'S LOGBOOK</h3>
+        </div>
+        <button onclick="toggleNotebook()" class="text-gray-400 hover:text-white font-orbitron font-bold text-sm cursor-pointer">✕ CLOSE</button>
+      </div>
+      <div id="notebook-entries" class="flex-grow overflow-y-auto space-y-3 pr-2 font-mono text-xs text-gray-300"></div>
+      <div class="border-t border-synthTeal/30 pt-3 mt-4 flex justify-between items-center text-xs">
+        <span class="text-synthTeal font-bold">SPACE FORCE 1.0 ARCHIVES</span>
+        <button onclick="clearNotebookLogs()" class="text-synthRed hover:underline font-orbitron font-bold cursor-pointer">CLEAR LOGS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header Navigation -->
+  <header class="w-full bg-synthDark/95 border-b border-synthPink/30 p-4 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-synthPink/20 border border-synthPink flex items-center justify-center text-synthPink text-xl glow-pink">
+          <i class="fa-solid fa-satellite-dish"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl font-black font-orbitron text-transparent bg-clip-text bg-gradient-to-r from-synthPink via-synthCyan to-synthPurple">
+            MISSION CONTROL & LAUNCH SIMULATOR
+          </h1>
+          <p id="active-vehicle-label" class="text-xs text-synthCyan font-bold uppercase tracking-widest">Config: ROVER PAYLOAD // ORBITAL HEAVY</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Replace window.location.href='index_2.html' with rocket_as.html -->
+<button onclick="window.location.href='rocket_as.html'" class="px-4 py-2 bg-synthPanel border border-synthCyan/40 text-synthCyan rounded-xl text-xs font-orbitron font-bold hover:bg-synthCyan hover:text-synthDark transition-all flex items-center gap-2 cursor-pointer">
+  <i class="fa-solid fa-wrench"></i> ASSEMBLY SUITE
+</button>
+        <button onclick="toggleNotebook()" class="px-4 py-2 bg-synthPanel border-2 border-synthCyan text-synthCyan rounded-xl text-xs font-orbitron font-bold hover:bg-synthCyan hover:text-synthDark transition-all flex items-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-book-journal-whills"></i> LOGBOOK
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Dashboard -->
+  <main class="max-w-7xl w-full mx-auto p-4 md:p-6 flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left Status & Test Flight Progress -->
+    <div class="space-y-6">
+      <div class="bg-synthPanel border-2 border-synthPink/30 p-5 rounded-2xl space-y-4">
+        <div class="flex justify-between items-center border-b border-synthPink/20 pb-2">
+          <h2 class="font-orbitron font-bold text-synthPink text-sm flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved"></i> HARDWARE READINESS
+          </h2>
+          <span id="badge-reliability" class="text-xs font-orbitron font-bold text-synthGold bg-synthDark px-2.5 py-0.5 rounded-full border border-synthGold/40">
+            100% RELIABLE
+          </span>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <div class="flex justify-between text-gray-300 font-semibold mb-1">
+              <span>Uncrewed Physical Test Flights</span>
+              <span id="stat-flight-count" class="text-synthPink font-mono">3 / 3</span>
+            </div>
+            <div class="w-full bg-synthDark h-2 rounded-full overflow-hidden">
+              <div id="bar-flight" class="bg-synthPink h-full w-full transition-all duration-500"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="assembly-status-box" class="bg-synthDark/80 p-3 rounded-xl border border-synthPink/20 text-[11px] text-gray-400 space-y-1">
+          <div class="text-synthCyan font-bold">🛠️ Assembly Quality Check:</div>
+          <p id="assembly-fault-summary">✓ All assembly stages verified and cleared for flight.</p>
+        </div>
+
+        <button onclick="runTestLaunch()" class="w-full py-2.5 bg-synthCard border border-synthCyan/50 text-synthCyan rounded-xl font-orbitron font-bold text-xs hover:bg-synthCyan hover:text-synthDark transition-all cursor-pointer flex items-center justify-center gap-2">
+          <i class="fa-solid fa-vial"></i> EXECUTE UNCREWED TEST FLIGHT
+        </button>
+      </div>
+
+      <!-- Real-World Flight Risks Log -->
+      <div class="bg-synthPanel border border-synthPink/20 p-5 rounded-2xl space-y-3">
+        <h3 class="font-orbitron font-bold text-gray-300 text-xs flex items-center gap-2 border-b border-synthPink/20 pb-2">
+          <i class="fa-solid fa-triangle-exclamation text-synthGold"></i> TELEMETRY & ANOMALIES
+        </h3>
+        <div id="log-container" class="bg-synthDark p-3 rounded-xl h-36 overflow-y-auto font-mono text-[11px] space-y-1.5 text-gray-400">
+          <div class="text-synthTeal">[SYSTEM]: Mission Control initialized. Canvas simulator ready.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Canvas Simulation Launch Control -->
+    <div class="lg:col-span-2 flex flex-col gap-6">
+      <div class="relative w-full h-[420px] bg-synthDark rounded-2xl border-2 border-synthCyan/40 overflow-hidden flex flex-col justify-between shadow-2xl">
+        
+        <!-- Top HUD Overlays -->
+        <div class="absolute top-4 left-4 right-4 flex justify-between items-start z-20 pointer-events-none">
+          <div class="bg-synthPanel/90 border border-synthCyan/30 p-2.5 rounded-xl font-mono text-xs space-y-0.5 backdrop-blur-md">
+            <div class="text-[9px] text-gray-400 font-bold uppercase">Launch Phase</div>
+            <div id="sim-status-badge" class="text-synthCyan font-orbitron font-bold text-xs">PAD READY</div>
+          </div>
+
+          <div class="bg-synthPanel/90 border border-synthPink/30 p-2.5 rounded-xl font-mono text-xs text-right space-y-0.5 backdrop-blur-md">
+            <div class="text-[9px] text-gray-400 font-bold uppercase">Target Orbit</div>
+            <div class="text-synthPink font-orbitron font-bold text-xs">400 km LEO @ 7,800 m/s</div>
+          </div>
+        </div>
+
+        <!-- Simulation Canvas -->
+        <canvas id="sim-canvas" class="absolute inset-0 w-full h-full block cursor-crosshair"></canvas>
+
+        <!-- Bottom Telemetry HUD Bar -->
+        <div class="absolute bottom-4 left-4 right-4 grid grid-cols-3 gap-3 font-mono text-xs text-center z-20 pointer-events-none">
+          <div class="bg-synthPanel/90 p-2 rounded-lg border border-synthPink/20 backdrop-blur-md">
+            <span class="text-gray-400 text-[9px]">ALTITUDE</span>
+            <div id="tele-alt" class="text-synthCyan font-bold font-orbitron text-sm">0.0 km</div>
+          </div>
+          <div class="bg-synthPanel/90 p-2 rounded-lg border border-synthPink/20 backdrop-blur-md">
+            <span class="text-gray-400 text-[9px]">SPEED</span>
+            <div id="tele-vel" class="text-synthPink font-bold font-orbitron text-sm">0 m/s</div>
+          </div>
+          <div class="bg-synthPanel/90 p-2 rounded-lg border border-synthPink/20 backdrop-blur-md">
+            <span class="text-gray-400 text-[9px]">G-FORCE</span>
+            <div id="tele-acc" class="text-synthGold font-bold font-orbitron text-sm">1.0 G</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <button onclick="startLaunchSimulation()" class="py-4 bg-gradient-to-r from-synthPink via-synthPurple to-synthCyan text-white font-orbitron font-black text-sm rounded-2xl hover:scale-105 transition-all shadow-xl glow-pink cursor-pointer flex items-center justify-center gap-2">
+          <i class="fa-solid fa-circle-play"></i> INITIATE FINALE LAUNCH SIMULATION 🚀
+        </button>
+        <button onclick="resetMissionControl()" class="py-4 bg-synthPanel border border-synthRed/50 text-synthRed font-orbitron font-bold text-xs rounded-2xl hover:bg-synthRed hover:text-synthDark transition-all cursor-pointer flex items-center justify-center gap-2">
+          <i class="fa-solid fa-rotate-left"></i> RESET SIMULATOR
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="w-full bg-synthDark/90 border-t border-synthPink/20 py-3 text-center text-[11px] text-gray-500 font-bold">
+    SPACE FORCE 1.0 &bull; NASA SPACE APPS CHALLENGE OFFICIAL MISSION CONTROL
+  </footer>
+
+  <div id="modal-container"></div>
+
+  <!-- Notebook & Simulation Script -->
+  <script src="notebook.js"></script>
+  <script>
+    const canvas = document.getElementById('sim-canvas');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+
+    let flightCount = Number.parseInt(localStorage.getItem('spaceforce_test_flights') || '0', 10) || 0;
+    let reliability = 100;
+    let isSimulating = false;
+    let simPhase = 'PAD_READY';
+    let countdown = 3;
+    let countdownTimer = null;
+
+    let altitude = 0;
+    let velocity = 0;
+    let acceleration = 1.0;
+    let pitchAngle = 90;
+    let timeStep = 0;
+    let stageSeparated = false;
+
+    let stars = [];
+    let particles = [];
+
+    let assemblyErrors = { stage1Error: false, stage2Error: false, stage3Error: false, stage4Error: false, stage5Error: false };
+    try {
+      const savedErrors = localStorage.getItem('spaceforce_assembly_errors');
+      if (savedErrors) assemblyErrors = JSON.parse(savedErrors);
+    } catch (e) {}
+
+    let budget = parseInt(localStorage.getItem('spaceforce_rocket_budget') || '1000000');
+    const vehicleType = localStorage.getItem('spaceforce_vehicle') || 'rover';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      generateStars();
+      updateUI();
+      renderInitialRocket();
+
+      document.getElementById('active-vehicle-label').innerText = `Config: ${vehicleType.toUpperCase()} PAYLOAD // READY FOR LAUNCH`;
+    });
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      generateStars();
+    });
+
+    function resizeCanvas() {
+      if (!canvas || !canvas.parentElement) return;
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+    }
+
+    function generateStars() {
+      stars = [];
+      if (!canvas) return;
+      for (let i = 0; i < 150; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          size: Math.random() * 2 + 0.5,
+          alpha: Math.random() * 0.8 + 0.2,
+          speed: Math.random() * 0.5 + 0.2
+        });
+      }
+    }
+
+    function updateUI() {
+      const savedFlights = window.RocketMissionControl ? window.RocketMissionControl.getFlightCount() : flightCount;
+      document.getElementById('stat-flight-count').innerText = `${savedFlights} / 3`;
+      document.getElementById('bar-flight').style.width = `${Math.min(100, savedFlights / 3 * 100)}%`;
+      const badge = document.getElementById('badge-reliability');
+      badge.innerText = `100% RELIABLE`;
+      badge.className = 'text-xs font-orbitron font-bold text-synthCyan bg-synthDark px-2.5 py-0.5 rounded-full border border-synthCyan/40';
+    }
+
+    function addLog(msg, color = 'text-gray-300') {
+      const container = document.getElementById('log-container');
+      if (!container) return;
+      const div = document.createElement('div');
+      div.className = color;
+      div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function runTestLaunch() {
+      if (window.RocketMissionControl) window.RocketMissionControl.runTestLaunch();
+    }
+
+    function startLaunchSimulation() {
+      if (isSimulating) return;
+      resetSimState();
+      isSimulating = true;
+      simPhase = 'COUNTDOWN';
+      document.getElementById('sim-status-badge').innerText = 'COUNTDOWN';
+      document.getElementById('sim-status-badge').className = 'text-[10px] font-orbitron font-bold bg-synthPink text-white px-2.5 py-0.5 rounded-full animate-pulse';
+      addLog("T-Minus 3s. Launch sequence initiated.");
+
+      countdownTimer = setInterval(() => {
+        countdown--;
+        if (countdown === 1) spawnIgnitionSmoke();
+        if (countdown <= 0) {
+          clearInterval(countdownTimer);
+          simPhase = 'ASCENT';
+          document.getElementById('sim-status-badge').innerText = 'POWERED ASCENT';
+          document.getElementById('sim-status-badge').className = 'text-[10px] font-orbitron font-bold bg-synthCyan text-synthDark px-2.5 py-0.5 rounded-full';
+          addLog("LIFT-OFF! Stage 1 powered ascent active.");
+          requestAnimationFrame(simLoop);
+        }
+      }, 1000);
+    }
+
+    function resetSimState() {
+      isSimulating = false;
+      simPhase = 'PAD_READY';
+      countdown = 3;
+      if (countdownTimer) clearInterval(countdownTimer);
+      altitude = 0;
+      velocity = 0;
+      acceleration = 1.0;
+      pitchAngle = 90;
+      timeStep = 0;
+      stageSeparated = false;
+      particles = [];
+      document.getElementById('sim-status-badge').innerText = 'PAD READY';
+      document.getElementById('sim-status-badge').className = 'text-[10px] font-orbitron font-bold bg-synthDark text-synthCyan border border-synthCyan/40 px-2.5 py-0.5 rounded-full';
+      document.getElementById('tele-alt').innerText = '0.0 km';
+      document.getElementById('tele-vel').innerText = '0 m/s';
+      document.getElementById('tele-acc').innerText = '1.0 G';
+      renderInitialRocket();
+    }
+
+    function renderInitialRocket() {
+      if (!ctx || !canvas) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      renderSky();
+      renderRocketEntity(canvas.width / 2, canvas.height / 2, 90, false, 0);
+    }
+
+    function simLoop() {
+      if (!isSimulating) return;
+
+      timeStep += 0.05;
+      altitude += 15 + timeStep * 10;
+      velocity += 200 + timeStep * 40;
+      acceleration = (1.2 + timeStep * 0.15).toFixed(1);
+
+      if (altitude > 45000 && !stageSeparated) {
+        stageSeparated = true;
+        addLog("Stage 1 separation confirmed. Stage 2 vacuum ignition.", "text-synthTeal");
+      }
+
+      document.getElementById('tele-alt').innerText = `${(altitude / 1000).toFixed(1)} km`;
+      document.getElementById('tele-vel').innerText = `${Math.round(velocity).toLocaleString()} m/s`;
+      document.getElementById('tele-acc').innerText = `${acceleration} G`;
+
+      // Successful orbital insertion milestone reached
+      if (altitude >= 400000 && velocity >= 7800) {
+        isSimulating = false;
+        triggerVictoryModal();
+        return;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      renderSky();
+      spawnExhaustParticles();
+      renderParticles();
+      renderRocketEntity(canvas.width / 2, canvas.height / 2, Math.max(10, 90 - timeStep * 4), stageSeparated, 1.0);
+
+      if (isSimulating) requestAnimationFrame(simLoop);
+    }
+
+    function renderSky() {
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grad.addColorStop(0, '#02040a');
+      grad.addColorStop(1, '#0b132b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      stars.forEach(s => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function renderRocketEntity(cx, cy, pitch, separated, throttle) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate((90 - pitch) * (Math.PI / 180));
+
+      if (throttle > 0) {
+        const flameLen = (separated ? 45 : 70) * throttle;
+        const flameGrad = ctx.createLinearGradient(0, 30, 0, 30 + flameLen);
+        flameGrad.addColorStop(0, '#ffffff');
+        flameGrad.addColorStop(0.3, '#66fcf1');
+        flameGrad.addColorStop(1, 'rgba(255, 0, 127, 0)');
+        ctx.fillStyle = flameGrad;
+        ctx.beginPath();
+        ctx.moveTo(-10, 30);
+        ctx.lineTo(0, 30 + flameLen);
+        ctx.lineTo(10, 30);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(-10, -45, 20, 40);
+
+      if (!separated) {
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(-10, -5, 20, 35);
+        ctx.fillStyle = '#45a29e';
+        ctx.beginPath();
+        ctx.moveTo(-10, 15);
+        ctx.lineTo(-20, 30);
+        ctx.lineTo(-10, 30);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(10, 15);
+        ctx.lineTo(20, 30);
+        ctx.lineTo(10, 30);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.fillStyle = '#ff007f';
+      ctx.beginPath();
+      ctx.moveTo(-10, -45);
+      ctx.lineTo(0, -70);
+      ctx.lineTo(10, -45);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+
+      if (simPhase === 'COUNTDOWN') {
+        ctx.fillStyle = '#66fcf1';
+        ctx.font = 'bold 32px Orbitron';
+        ctx.textAlign = 'center';
+        ctx.fillText(`T-${countdown}`, cx, cy - 85);
+      }
+    }
+
+    function spawnIgnitionSmoke() {
+      for (let i = 0; i < 25; i++) {
+        particles.push({
+          x: canvas.width / 2 + (Math.random() - 0.5) * 20,
+          y: canvas.height / 2 + 40,
+          vx: (Math.random() - 0.5) * 5,
+          vy: -Math.random() * 2,
+          size: Math.random() * 8 + 4,
+          color: 'rgba(203, 213, 225, 0.7)',
+          life: 1.0,
+          decay: 0.02
+        });
+      }
+    }
+
+    function spawnExhaustParticles() {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      for (let i = 0; i < 4; i++) {
+        particles.push({
+          x: cx + (Math.random() - 0.5) * 10,
+          y: cy + 40,
+          vx: (Math.random() - 0.5) * 6,
+          vy: Math.random() * 8 + 4,
+          size: Math.random() * 5 + 3,
+          color: '#ff007f',
+          life: 1.0,
+          decay: 0.05
+        });
+      }
+    }
+
+    function renderParticles() {
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        if (p.life <= 0) particles.splice(i, 1);
+        else {
+          ctx.save();
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = p.life;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    }
+
+    function triggerVictoryModal() {
+      addLog("Mission Control ascent simulation complete. Preparing mission debrief.", "text-synthCyan font-bold");
+      const controller = window.RocketMissionControl;
+      const debrief = controller ? controller.getDebrief() : { report: null, mission: {}, cards: ['Mission report unavailable.'], finalSuccess: false, errorCount: 0, rocketType: 'unknown' };
+      const tutorialWasComplete = localStorage.getItem('spaceforce_astra_tutorial_complete') === 'true';
+      const finalized = controller ? controller.finalizeMission(debrief) : { finalSuccess: false, details: 'Mission report unavailable.' };
+      const finalSuccess = finalized.finalSuccess;
+      const vehicle = (debrief.report && debrief.report.vehicle || localStorage.getItem('spaceforce_vehicle') || 'vehicle').toUpperCase();
+      const findingMarkup = debrief.cards.map(item => `<div class="bg-synthPanel p-2.5 rounded-lg border border-synthCyan/20 text-gray-300">${controller ? controller.escapeHTML(item) : item}</div>`).join('');
+      const modalHTML = `
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+          <div class="bg-synthPanel border-2 border-synthCyan p-6 rounded-2xl max-w-xl w-full text-center space-y-4 shadow-2xl glow-cyan font-mono max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-black font-orbitron text-synthCyan">MISSION SUCCESS! 🎉</h2>
+            <div class="text-synthCyan font-bold text-left text-xs">👩‍🚀 ASTRA: "Amazing flight! Our custom vehicle and rocket stage reached orbit perfectly."</div>
+            
+            <div class="bg-synthDark p-4 rounded-xl text-xs space-y-3 text-left border border-synthCyan/30">
+              <div class="flex justify-between items-center text-[11px] text-synthPink font-bold border-b border-synthPink/30 pb-1.5">
+                <span>CHOICE-BASED MISSION DEBRIEF</span>
+                <span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded border border-emerald-400">${vehicle.toUpperCase()}</span>
+              </div>
+              <div id="choice-feedback-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${findingMarkup}
+              </div>
+            </div>
+
+            <div class="bg-synthDark p-4 rounded-xl text-xs text-left border border-synthPurple/40">
+              <div id="nasa-context-title" class="text-synthPurple font-bold mb-1">NASA IMAGE LIBRARY</div>
+              <p id="nasa-context-detail" class="text-gray-300">Looking for NASA context related to your destination and selected hardware...</p>
+              <a id="nasa-context-link" class="hidden inline-block mt-2 text-synthCyan underline" target="_blank" rel="noopener">OPEN NASA RESULT</a>
+            </div>
+
+            <button onclick="window.location.href='index.html'" class="w-full py-3 bg-synthPink text-white font-orbitron font-bold rounded-xl text-xs hover:scale-105 transition-all cursor-pointer">
+              COMPLETE MISSION 🚀
+            </button>
+          </div>
+        </div>
+      `;
+      document.getElementById('modal-container').innerHTML = modalHTML;
+      const modal = document.getElementById('modal-container');
+      const heading = modal.querySelector('h2');
+      const astraLine = modal.querySelector('.text-synthCyan.font-bold.text-left.text-xs');
+      const primaryAction = modal.querySelector('button');
+      if (heading) {
+        heading.textContent = finalSuccess ? 'MISSION SUCCESS!' : 'MISSION INCOMPLETE';
+        heading.classList.toggle('text-synthCyan', finalSuccess);
+        heading.classList.toggle('text-synthRed', !finalSuccess);
+      }
+      if (astraLine) astraLine.textContent = finalSuccess
+        ? (!tutorialWasComplete ? 'ASTRA: “That was your first completed mission. My tutorial is done. Trust your notebook and your engineering judgment from here. Goodbye, Intern!”' : 'Mission Control: Your choices and flight data are archived in the campaign notebook.')
+        : 'Mission Control: Your choices are saved. Review the findings, repair the weak point, and try this mission again.';
+      if (primaryAction) {
+        primaryAction.textContent = finalSuccess
+          ? (getCompletedMissions().length >= 6 ? 'CAMPAIGN COMPLETE — RETURN TO TERMINAL' : 'RETURN FOR NEXT MISSION')
+          : (debrief.errorCount ? 'RETRY ROCKET ASSEMBLY' : debrief.report && debrief.report.simulationStatus !== 'SUCCESS' ? 'RETRY FLIGHT SIMULATION' : debrief.vehicleAssembly && !debrief.vehicleAssembly.passed ? 'RETRY VEHICLE ASSEMBLY' : 'RETURN TO MISSION DESIGN');
+        primaryAction.onclick = () => {
+          if (finalSuccess) window.location.href = 'index.html';
+          else if (debrief.errorCount) window.location.href = `rocket_as.html?rocket=${encodeURIComponent(debrief.rocketType || 'interplanetary')}`;
+          else if (debrief.report && debrief.report.simulationStatus !== 'SUCCESS') window.location.href = 'rocket_sim.html';
+          else if (debrief.vehicleAssembly && !debrief.vehicleAssembly.passed) window.location.href = `assembly.html?vehicle=${encodeURIComponent(debrief.report && debrief.report.vehicle || 'rover')}`;
+          else window.location.href = 'index.html';
+        };
+      }
+      if (!finalSuccess && primaryAction) {
+        const secondary = document.createElement('button');
+        secondary.className = 'w-full py-3 bg-synthDark border border-synthCyan text-synthCyan font-orbitron font-bold rounded-xl text-xs cursor-pointer';
+        secondary.textContent = 'RETURN TO MISSION DESIGN';
+        secondary.onclick = () => { window.location.href = 'index.html'; };
+        primaryAction.insertAdjacentElement('afterend', secondary);
+      }
+      if (controller) controller.loadNasaChoiceContext();
+    }
+
+    function resetMissionControl() {
+      resetSimState();
+      addLog("Mission Control reset to launchpad.");
+    }
+  </script>
+  <script src="rocket_mission_control.js"></script>
+</body>
+</html>
