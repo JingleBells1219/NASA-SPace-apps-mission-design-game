@@ -285,8 +285,12 @@ function generateStars() {
   }
 }
 
-function goRedesign() {
+function goToRocketDesign() {
   window.location.href = 'index.html?view=rocketIntro';
+}
+
+function goToVehicleDesign() {
+  window.location.href = 'index.html?view=vehicleWorkbench';
 }
 
 function getCurrentTWR() {
@@ -973,7 +977,10 @@ function triggerOutcome(status, title, detail, colorClass, traj = null) {
     ${trajHTML}
   `;
 
-  document.getElementById('result-actions').innerHTML = `<button onclick="resetSimState()" class="w-full py-2.5 bg-synthDark border border-synthCyan text-synthCyan font-orbitron font-bold rounded-xl text-xs cursor-pointer hover:bg-synthCyan hover:text-synthDark transition">RETRY SIMULATION</button><button onclick="goToRocketAssembly()" class="w-full py-2.5 bg-synthPink text-white font-orbitron font-bold rounded-xl text-xs cursor-pointer hover:opacity-90 transition">CONTINUE TO ROCKET ASSEMBLY &amp; MISSION CONTROL</button>`;
+  const retryButton = `<button onclick="resetSimState()" class="w-full py-2.5 bg-synthDark border border-synthCyan text-synthCyan font-orbitron font-bold rounded-xl text-xs cursor-pointer hover:bg-synthCyan hover:text-synthDark transition">RETRY SIMULATION</button>`;
+  document.getElementById('result-actions').innerHTML = finalStatus === 'SUCCESS'
+    ? `${retryButton}<button onclick="goToRocketAssembly()" class="w-full py-2.5 bg-synthPink text-white font-orbitron font-bold rounded-xl text-xs cursor-pointer hover:opacity-90 transition">CONTINUE TO ROCKET ASSEMBLY &amp; MISSION CONTROL</button>`
+    : `${retryButton}<div class="grid grid-cols-1 sm:grid-cols-2 gap-2"><button onclick="goToRocketDesign()" class="w-full py-2.5 bg-synthPink text-white font-orbitron font-bold rounded-xl text-xs cursor-pointer hover:opacity-90 transition">GO BACK TO ROCKET DESIGN</button><button onclick="goToVehicleDesign()" class="w-full py-2.5 bg-synthCyan text-synthDark font-orbitron font-bold rounded-xl text-xs cursor-pointer hover:opacity-90 transition">GO BACK TO VEHICLE DESIGN</button></div>`;
 }
 
 function renderTrajectoryHUD() {

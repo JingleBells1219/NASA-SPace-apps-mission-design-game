@@ -1876,6 +1876,8 @@ function workbenchContinue() {
     switchView('viewRocketIntro');
   } else if (view === 'rocketSimIntro') {
     switchView('viewRocketSimIntro');
+  } else if (view === 'vehicleWorkbench') {
+    openVehicleWorkbench();
   }
 })();
 
