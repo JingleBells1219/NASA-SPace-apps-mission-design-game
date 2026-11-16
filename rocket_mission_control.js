@@ -179,26 +179,48 @@
     const { report, mission } = getDebrief();
     const design = report && report.vehicleDesign || readJson('spaceforce_vehicle_design', {});
     const parts = Object.values(design).map(id => PART_NAMES[id] || id).slice(0, 3);
-    const queryTerms = [mission.planet || (report && report.planet), report && report.vehicle, ...parts].filter(Boolean).join(' ');
+    const planet = mission.planet || (report && report.planet) || '';
+    const vehicle = report && report.vehicle || '';
+    const queryTerms = [planet, vehicle, ...parts].filter(Boolean).join(' ');
+    const searchQueries = [...new Set([
+      queryTerms,
+      [planet, vehicle].filter(Boolean).join(' '),
+      planet,
+      'space exploration'
+    ].filter(Boolean))];
     title.textContent = 'Searching NASA Image and Video Library…';
-    const url = `https://images-api.nasa.gov/search?q=${encodeURIComponent(queryTerms || 'space exploration')}&media_type=image&page_size=1`;
-    fetch(url).then(response => {
-      if (!response.ok) throw new Error(`NASA API returned ${response.status}`);
-      return response.json();
-    }).then(data => {
-      const item = data && data.collection && data.collection.items && data.collection.items[0];
-      const metadata = item && item.data && item.data[0];
-      if (!metadata) throw new Error('No matching NASA image was found.');
+    async function findNasaImage() {
+      let lastError = null;
+      for (const query of searchQueries) {
+        try {
+          const url = `https://images-api.nasa.gov/search?q=${encodeURIComponent(query)}&media_type=image&page_size=1`;
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`NASA API returned ${response.status}`);
+          const data = await response.json();
+          const item = data && data.collection && data.collection.items && data.collection.items[0];
+          const metadata = item && item.data && item.data[0];
+          if (metadata) return { item, metadata, query };
+        } catch (error) {
+          lastError = error;
+          // Broader searches cannot help if the browser cannot reach the API.
+          if (error instanceof TypeError) break;
+        }
+      }
+      if (lastError) throw lastError;
+      throw new Error('NASA returned no image for the mission searches.');
+    }
+
+    findNasaImage().then(({ item, metadata, query }) => {
       title.textContent = metadata.title || 'NASA image result';
-      detail.textContent = metadata.description || `NASA search matched: ${queryTerms}.`;
+      detail.textContent = metadata.description || `NASA search matched: ${query}.`;
       const nasaId = metadata.nasa_id;
       const href = nasaId ? `https://images.nasa.gov/details/${encodeURIComponent(nasaId)}` : item.href || 'https://images.nasa.gov/';
       link.href = href;
       link.classList.remove('hidden');
       link.textContent = 'OPEN NASA RESULT';
-    }).catch(() => {
-      title.textContent = 'NASA data unavailable right now';
-      detail.textContent = `The choice-based debrief above is saved locally. NASA context query: ${queryTerms || 'space exploration'}.`;
+    }).catch(error => {
+      title.textContent = 'NASA image lookup unavailable';
+      detail.textContent = `The choice-based debrief above is saved locally. NASA search tried ${searchQueries.join(' → ')}. ${error && error.message ? error.message : 'Check the internet connection and try again.'}`;
       link.classList.add('hidden');
     });
   }
